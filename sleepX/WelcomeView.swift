@@ -2,8 +2,6 @@
 //  WelcomeView.swift
 //  sleepX
 //
-//  Created by OpenAI on 3/25/26.
-//
 
 import SwiftUI
 import Combine
@@ -41,7 +39,8 @@ struct WelcomeView: View {
                 .padding(.bottom, 32)
             }
             .padding(.top, 20)
-            .navigationTitle("Welcome View")
+            .navigationTitle("Welcome")
+            .navigationBarTitleDisplayMode(.inline)
         }
     }
 }
@@ -49,4 +48,3 @@ struct WelcomeView: View {
 #Preview {
     WelcomeView()
 }
-

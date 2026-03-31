@@ -27,10 +27,6 @@ final class SleepSummaryViewModel: ObservableObject {
         Calendar.current.date(byAdding: .day, value: 4, to: weekStartDate) ?? weekStartDate
     }
 
-    var weekDatesMondayToFriday: [Date] {
-        (0..<5).compactMap { Calendar.current.date(byAdding: .day, value: $0, to: weekStartDate) }
-    }
-
     func metrics(for date: Date) -> SavedSleepMetrics? {
         store.metrics(for: date)
     }
@@ -45,10 +41,10 @@ final class SleepSummaryViewModel: ObservableObject {
         return SleepScoreViewModel(data: data)
     }
 
-    func setWeekStartDate(_ newDate: Date) {
-        let monday = Self.mondayOfWeek(containing: newDate)
-        weekStartDate = monday
-        selectedDate = monday
+    /// Calendar selection: show data for this day and align the week range Mon–Fri.
+    func selectDayFromCalendar(_ date: Date) {
+        weekStartDate = Self.mondayOfWeek(containing: date)
+        selectedDate = date
     }
 
     private static func mondayOfWeek(containing date: Date) -> Date {

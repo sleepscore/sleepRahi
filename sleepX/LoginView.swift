@@ -2,17 +2,20 @@
 //  LoginView.swift
 //  sleepX
 //
-//  Created by OpenAI on 3/25/26.
-//
 
 import SwiftUI
 import Combine
 
 final class LoginViewModel: ObservableObject {
-    let objectWillChange = ObservableObjectPublisher()
     @Published var username: String = ""
     @Published var pin: String = ""
     @Published var errorMessage: String?
+
+    private let accountStore: LocalAccountStore
+
+    init(accountStore: LocalAccountStore = .shared) {
+        self.accountStore = accountStore
+    }
 
     var canSubmit: Bool {
         !username.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && pin.count >= 4
@@ -30,83 +33,87 @@ final class LoginViewModel: ObservableObject {
             errorMessage = "Please enter a PIN (at least 4 digits)."
             return false
         }
-
-        // Authentication logic can be wired to your backend later.
+        guard accountStore.verify(username: trimmed, pin: pin) else {
+            errorMessage = "Unknown username or incorrect PIN. Make sure to create an account first."
+            return false
+        }
         return true
     }
 }
 
 struct LoginView: View {
     @StateObject private var viewModel = LoginViewModel()
-
-    private enum Destination: Hashable {
-        case home
-    }
+    @State private var navigateToHome = false
 
     var body: some View {
-        NavigationStack {
-            VStack(spacing: 16) {
-                Text("Login")
-                    .font(.largeTitle)
-                    .fontWeight(.bold)
-                    .padding(.top, 24)
+        VStack(spacing: 16) {
+            Text("Login")
+                .font(.largeTitle)
+                .fontWeight(.bold)
+                .padding(.top, 24)
 
-                TextField("Username", text: $viewModel.username)
-                    .textContentType(.username)
-                    .textInputAutocapitalization(.never)
-                    .autocorrectionDisabled(true)
-                    .padding()
-                    .background(Color(.secondarySystemBackground))
-                    .cornerRadius(12)
+            TextField("Username", text: $viewModel.username)
+                .textContentType(.username)
+                .textInputAutocapitalization(.never)
+                .autocorrectionDisabled(true)
+                .padding()
+                .background(Color(.secondarySystemBackground))
+                .cornerRadius(12)
 
-                SecureField("PIN", text: $viewModel.pin)
-                    .textContentType(.oneTimeCode)
-                    .keyboardType(.numberPad)
-                    .padding()
-                    .background(Color(.secondarySystemBackground))
-                    .cornerRadius(12)
-                    .onChange(of: viewModel.pin) { oldValue, newValue in
-                        let digitsOnly = newValue.filter(\.isNumber)
-                        if digitsOnly != newValue {
-                            viewModel.pin = digitsOnly
-                        }
-                    }
-
-                if let message = viewModel.errorMessage {
-                    Text(message)
-                        .foregroundStyle(.red)
-                        .font(.callout)
-                        .multilineTextAlignment(.center)
-                        .padding(.horizontal)
+            SecureField("PIN", text: $viewModel.pin)
+                .textContentType(.oneTimeCode)
+                .keyboardType(.numberPad)
+                .padding()
+                .background(Color(.secondarySystemBackground))
+                .cornerRadius(12)
+                .onChange(of: viewModel.pin) { _, newValue in
+                    let digitsOnly = newValue.filter(\.isNumber)
+                    if digitsOnly != newValue { viewModel.pin = digitsOnly }
                 }
 
-                NavigationLink(value: Destination.home) {
-                    Text("Enter")
-                        .fontWeight(.semibold)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 14)
-                        .background(viewModel.canSubmit ? Color.accentColor : Color.gray.opacity(0.4))
-                        .foregroundColor(.white)
-                        .cornerRadius(12)
-                }
-                .disabled(!viewModel.canSubmit)
-                .padding(.top, 8)
-
-                Spacer()
+            if let message = viewModel.errorMessage {
+                Text(message)
+                    .foregroundStyle(.red)
+                    .font(.callout)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal)
             }
-            .padding(.horizontal)
-            .navigationDestination(for: Destination.self) { destination in
-                switch destination {
-                case .home:
-                    ContentView()
+
+            Button {
+                if viewModel.submit() {
+                    navigateToHome = true
                 }
+            } label: {
+                Text("Enter")
+                    .fontWeight(.semibold)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 14)
+                    .background(viewModel.canSubmit ? Color.accentColor : Color.gray.opacity(0.4))
+                    .foregroundColor(.white)
+                    .cornerRadius(12)
             }
-            .navigationTitle("Login View")
+            .disabled(!viewModel.canSubmit)
+            .padding(.top, 8)
+
+            NavigationLink(destination: CreateAccountView()) {
+                Text("Create an account")
+                    .fontWeight(.medium)
+            }
+            .padding(.top, 4)
+
+            Spacer()
+        }
+        .padding(.horizontal)
+        .navigationTitle("Login")
+        .navigationBarTitleDisplayMode(.inline)
+        .navigationDestination(isPresented: $navigateToHome) {
+            ContentView()
         }
     }
 }
 
 #Preview {
-    LoginView()
+    NavigationStack {
+        LoginView()
+    }
 }
-

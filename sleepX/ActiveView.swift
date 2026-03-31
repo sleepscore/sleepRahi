@@ -31,6 +31,7 @@ struct ActiveView: View {
             Spacer()
         }
         .navigationTitle("Active View")
+        .navigationBarTitleDisplayMode(.inline)
         .padding(.bottom, 24)
     }
 }

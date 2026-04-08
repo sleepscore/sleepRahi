@@ -4,7 +4,7 @@
 //
 //  Placeholder screen for active sleep tracking.
 //
-
+import CoreBluetooth
 import SwiftUI
 import Combine
 
@@ -15,7 +15,8 @@ final class ActiveViewModel: ObservableObject {
 
 struct ActiveView: View {
     @StateObject private var viewModel = ActiveViewModel()
-
+    @StateObject private var ble = BLEManager()
+    
     var body: some View {
         VStack(spacing: 16) {
             Text("Active")
@@ -27,7 +28,18 @@ struct ActiveView: View {
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
                 .padding(.horizontal)
-
+            
+            VStack(spacing: 12) {
+                Text("Status: \(ble.statusText)")
+                Text("Heart Rate: \(Int(ble.sensorData.hr)) BPM")
+                Text("SpO2: \(Int(ble.sensorData.spo2))%")
+                Text("Acc X: \(ble.sensorData.accX, specifier: "%.2f")")
+                Text("Acc Y: \(ble.sensorData.accY, specifier: "%.2f")")
+                Text("Acc Z: \(ble.sensorData.accZ, specifier: "%.2f")")
+                Text("Gyro X: \(ble.sensorData.gyroX, specifier: "%.2f")")
+                Text("Gyro Y: \(ble.sensorData.gyroY, specifier: "%.2f")")
+                Text("Gyro Z: \(ble.sensorData.gyroZ, specifier: "%.2f")")
+            }
             Spacer()
         }
         .navigationTitle("Active View")

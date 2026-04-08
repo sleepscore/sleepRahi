@@ -9,6 +9,8 @@ import SwiftUI
 
 struct SleepScoreIndexView: View {
     @ObservedObject var viewModel: SleepScoreViewModel
+    var showsMetrics: Bool = true
+    var showsExplanation: Bool = true
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -17,9 +19,11 @@ struct SleepScoreIndexView: View {
                 HStack(alignment: .center, spacing: 16) {
                     ScoreCircleView(score: viewModel.data.score, color: viewModel.scoreColor())
 
-                    VStack(alignment: .leading, spacing: 10) {
-                        StatLine(title: "Time asleep", value: viewModel.formatDuration(viewModel.data.timeAsleepSeconds))
-                        StatLine(title: "Time in bed", value: viewModel.formatDuration(viewModel.data.timeInBedSeconds))
+                    if showsMetrics {
+                        VStack(alignment: .leading, spacing: 10) {
+                            StatLine(title: "Time asleep", value: viewModel.formatDuration(viewModel.data.timeAsleepSeconds))
+                            StatLine(title: "Time in bed", value: viewModel.formatDuration(viewModel.data.timeInBedSeconds))
+                        }
                     }
 
                     Spacer(minLength: 0)
@@ -27,23 +31,25 @@ struct SleepScoreIndexView: View {
             }
 
             // Explanation for the active score range
-            VStack(alignment: .leading, spacing: 10) {
-                Text("Sleep Score Explanation")
-                    .font(.headline)
+            if showsExplanation {
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("Sleep Score Explanation")
+                        .font(.headline)
 
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Showing for \(viewModel.activeExplanationRangeTitle())")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Showing for \(viewModel.activeExplanationRangeTitle())")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
 
-                    Text(viewModel.activeExplanation())
-                        .font(.body)
-                        .foregroundStyle(.primary)
-                        .fixedSize(horizontal: false, vertical: true)
+                        Text(viewModel.activeExplanation())
+                            .font(.body)
+                            .foregroundStyle(.primary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    .padding()
+                    .background(Color(.secondarySystemBackground))
+                    .cornerRadius(12)
                 }
-                .padding()
-                .background(Color(.secondarySystemBackground))
-                .cornerRadius(12)
             }
         }
     }

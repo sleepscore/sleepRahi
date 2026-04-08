@@ -11,12 +11,12 @@ struct ContentView: View {
     var body: some View {
         ScrollView {
             VStack(spacing: 18) {
-                SleepScoreIndexView(viewModel: viewModel)
 
                 NavigationLink(destination: ActiveView()) {
                     Text("Start tracking")
                         .fontWeight(.semibold)
                         .frame(maxWidth: .infinity)
+                        .frame(height: 50)
                         .padding(.vertical, 14)
                         .background(Color.accentColor)
                         .foregroundColor(.white)
@@ -28,6 +28,7 @@ struct ContentView: View {
                     Text("Summary View")
                         .fontWeight(.semibold)
                         .frame(maxWidth: .infinity)
+                        .frame(height: 50)
                         .padding(.vertical, 14)
                         .background(Color(.secondarySystemBackground))
                         .foregroundColor(.primary)
@@ -36,7 +37,7 @@ struct ContentView: View {
             }
             .padding()
         }
-        .navigationTitle("Score View")
+        .navigationTitle("Home Page")
         .navigationBarTitleDisplayMode(.inline)
     }
 }

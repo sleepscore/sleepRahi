@@ -23,11 +23,6 @@ struct ActiveView: View {
                 .font(.largeTitle)
                 .fontWeight(.bold)
                 .padding(.top, 24)
-
-            Text("Tracking is running. (Bluetooth + scoring coming next.)")
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
-                .padding(.horizontal)
             
             VStack(spacing: 12) {
                 Text("Status: \(ble.statusText)")

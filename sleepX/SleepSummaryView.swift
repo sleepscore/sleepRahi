@@ -4,23 +4,31 @@
 //
 
 import SwiftUI
+import SwiftData
 
 struct SleepSummaryView: View {
     @StateObject private var viewModel = SleepSummaryViewModel()
-    @State private var selectedScoreViewModel: SleepScoreViewModel?
 
+    // Query ALL SleepResult records from SwiftData, sorted newest first
+    @Query(sort: \SleepResult.date, order: .reverse)
+
+    private var allResults: [SleepResult]
+    
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
-                VStack(alignment: .leading, spacing: 8) {
+            VStack(alignment: .leading, spacing: 20) {
+
+                // ── Header ──────────────────────────────────
+                VStack(alignment: .leading, spacing: 4) {
                     Text("Summary")
                         .font(.largeTitle)
                         .fontWeight(.bold)
-
                     Text(weekRangeText)
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
-
+                }
+                // ── Calendar ────────────────────────────────
+                VStack {
                     DatePicker(
                         "Select day",
                         selection: Binding(
@@ -30,39 +38,83 @@ struct SleepSummaryView: View {
                         displayedComponents: [.date]
                     )
                     .datePickerStyle(.graphical)
+                    .tint(.indigo)
+                }
+                .padding(14)
+                .background(Color(.secondarySystemBackground))
+                .cornerRadius(16)
+
+                // ── Selected day label ───────────────────────
+                HStack(spacing: 6) {
+                    Image(systemName: "calendar")
+                        .foregroundStyle(.indigo)
+                    Text(selectedDayText)
+                        .font(.subheadline)
+                        .fontWeight(.medium)
+                    Spacer()
                 }
 
-                if let vm = selectedScoreViewModel {
-                    SleepScoreIndexView(viewModel: vm)
+                // ── Metrics or empty state ───────────────────
+                if let result = resultForSelectedDay {
+                    SleepScoreIndexView(
+                        viewModel: viewModel.scoreViewModel(from: result)
+                    )
                 } else {
-                    Text("No sleep score data saved.")
-                        .foregroundStyle(.secondary)
-                        .padding()
+                    EmptyDayView()
                 }
             }
             .padding()
         }
-        .navigationTitle("Summary View")
+        .navigationTitle("Summary")
         .navigationBarTitleDisplayMode(.inline)
-        .onAppear {
-            selectedScoreViewModel = viewModel.sleepScoreViewModel(for: viewModel.selectedDate)
-        }
-        .onChange(of: viewModel.selectedDate) { _, newValue in
-            selectedScoreViewModel = viewModel.sleepScoreViewModel(for: newValue)
-        }
+    }
+
+    // ── Helpers ──────────────────────────────────────────────
+
+    /// Find the SwiftData record whose .date matches the selected calendar day.
+    private var resultForSelectedDay: SleepResult? {
+        allResults.first { viewModel.isSameDay($0.date, viewModel.selectedDate) }
     }
 
     private var weekRangeText: String {
-        let start = viewModel.weekStartDate
-        let end = viewModel.weekEndDate
         let df = DateFormatter()
         df.dateStyle = .medium
-        return "Week: \(df.string(from: start)) - \(df.string(from: end))"
+        return "\(df.string(from: viewModel.weekStartDate)) – \(df.string(from: viewModel.weekEndDate))"
+    }
+
+    private var selectedDayText: String {
+        let df = DateFormatter()
+        df.dateFormat = "EEEE, MMMM d"
+        return df.string(from: viewModel.selectedDate)
+    }
+}
+
+// MARK: - Empty state
+
+private struct EmptyDayView: View {
+    var body: some View {
+        VStack(spacing: 12) {
+            Image(systemName: "moon.zzz.fill")
+                .font(.system(size: 40))
+                .foregroundStyle(.indigo.opacity(0.5))
+            Text("No data for this night")
+                .font(.headline)
+                .foregroundStyle(.secondary)
+            Text("Make sure your device recorded and has disconnected.")
+                .font(.subheadline)
+                .foregroundStyle(.tertiary)
+                .multilineTextAlignment(.center)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(32)
+        .background(Color(.secondarySystemBackground))
+        .cornerRadius(16)
     }
 }
 
 #Preview {
     NavigationStack {
-        SleepSummaryView()
+        LoginView()
     }
+    .modelContainer(for: SleepResult.self, inMemory: true)
 }

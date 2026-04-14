@@ -2,10 +2,9 @@
 //  sleepXApp.swift
 //  sleepX
 //
-//  Created by Rahi Mehta on 3/24/26.
-//
 
 import SwiftUI
+import SwiftData
 
 @main
 struct sleepXApp: App {
@@ -13,5 +12,7 @@ struct sleepXApp: App {
         WindowGroup {
             WelcomeView()
         }
+        // Single source of truth — SwiftData persists SleepResult to device storage
+        .modelContainer(for: SleepResult.self)
     }
 }

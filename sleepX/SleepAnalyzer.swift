@@ -22,7 +22,7 @@ class SleepAnalyzer {
 
     // MARK: - ENTRY POINT
     func analyze(data: [SensorData]) -> Result? {
-        guard data.count > 1000 else { return nil }
+        guard data.count > 15 else { return nil }
 
         // Acceleration magnitude
         let accel = data.map {

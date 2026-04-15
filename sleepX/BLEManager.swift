@@ -11,8 +11,8 @@ import Combine
 import SwiftData
 
 // Must match your Arduino UUIDs exactly
-let SERVICE_UUID = CBUUID(string: "12345678-1234-1234-1234-123456789abc")
-let CHAR_UUID    = CBUUID(string: "12345678-1234-1234-1234-123456789def")
+let SERVICE_UUID = CBUUID(string: "3a94b4a6-c6fd-4272-a476-465327f50e3c")
+let CHAR_UUID    = CBUUID(string: "0b51e4d8-4271-4f2d-b260-da01bbf30b76")
 
 struct SensorData {
     var accX:  Float = 0
@@ -33,6 +33,9 @@ class BLEManager: NSObject, ObservableObject, CBCentralManagerDelegate, CBPeriph
     private var centralManager: CBCentralManager!
     private var peripheral:     CBPeripheral?
     private var characteristic: CBCharacteristic?
+    private var isEndingSession = false
+    private var endSessionCompletion: (() -> Void)?
+    
 
     // MARK: - Sleep Analysis
     var sessionData: [SensorData] = []
@@ -77,14 +80,31 @@ class BLEManager: NSObject, ObservableObject, CBCentralManagerDelegate, CBPeriph
     }
 
     // MARK: - CSV helpers
+    private func csvFolderURL() -> URL {
+          let docs = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
+          let folder = docs.appendingPathComponent("sleepmetricanalysis", isDirectory: true)
 
+          if !FileManager.default.fileExists(atPath: folder.path) {
+              do {
+                  try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+                  print("📁 Created CSV folder → \(folder.path)")
+              } catch {
+                  print("❌ Failed to create CSV folder: \(error.localizedDescription)")
+              }
+          }
+
+          return folder
+      }
+    
     private func openCSVIfNeeded(firstTimestamp: Date) {
         guard csvFileHandle == nil else { return }
 
         let dateStr = nightDateString(for: firstTimestamp)
-        let folder  = URL(fileURLWithPath: "/Users/rahimehta/sleepmetricanalysis")
+        let folder  = csvFolderURL()
         let url     = folder.appendingPathComponent("sleep_\(dateStr).csv")
         csvFileURL  = url
+        print("CSV folder path -> \(folder.path)")
+        print("CSV folder path -> \(url.path)")
 
         if !FileManager.default.fileExists(atPath: url.path) {
             FileManager.default.createFile(
@@ -121,7 +141,37 @@ class BLEManager: NSObject, ObservableObject, CBCentralManagerDelegate, CBPeriph
         csvFileURL = nil
         // Keep sessionFirstTimestamp alive so runSleepAnalysis uses same night date
     }
-
+    /// Explicit session shutdown for UI events (e.g. user taps Back).
+    /// Ensures we stop streaming before the view disappears.
+    private func finalizeEndedSession() {
+        closeCSV()
+        runSleepAnalysis()
+        sessionData.removeAll()
+        sessionFirstTimestamp = nil
+        isEndingSession = false
+        statusText = "Scanning..."
+        endSessionCompletion?()
+        endSessionCompletion = nil
+    }
+    
+    func endActiveSession(completion: (() -> Void)? = nil) {
+        guard !isEndingSession else { return }
+        isEndingSession = true
+        endSessionCompletion = completion
+        statusText = "Ending session..."
+        
+        if let peripheral = peripheral {
+            if let characteristic = characteristic {
+                peripheral.setNotifyValue(false, for: characteristic)
+            }
+            centralManager.cancelPeripheralConnection(peripheral)
+            return
+        }
+        
+        // If there is no active peripheral, finalize immediately.
+        finalizeEndedSession()
+    }
+    
     // MARK: - Init
 
     override init() {
@@ -132,11 +182,14 @@ class BLEManager: NSObject, ObservableObject, CBCentralManagerDelegate, CBPeriph
     // MARK: - CBCentralManagerDelegate
 
     func centralManagerDidUpdateState(_ central: CBCentralManager) {
+        print("Bluetooth state rawValue: \(central.state.rawValue)")
         if central.state == .poweredOn {
             centralManager.scanForPeripherals(withServices: [SERVICE_UUID], options: nil)
             statusText = "Scanning for NanoPPG..."
+            print("Scanning for service \(SERVICE_UUID.uuidString)")
         } else {
             statusText = "Bluetooth unavailable"
+            print("Bluetooth Unavailable")
         }
     }
 
@@ -144,6 +197,7 @@ class BLEManager: NSObject, ObservableObject, CBCentralManagerDelegate, CBPeriph
                         didDiscover peripheral: CBPeripheral,
                         advertisementData: [String: Any],
                         rssi RSSI: NSNumber) {
+        print("✅ Discovered peripheral: \(peripheral.name ?? "unknown"), RSSI: \(RSSI)")
         self.peripheral = peripheral
         centralManager.stopScan()
         centralManager.connect(peripheral, options: nil)
@@ -152,6 +206,7 @@ class BLEManager: NSObject, ObservableObject, CBCentralManagerDelegate, CBPeriph
 
     func centralManager(_ central: CBCentralManager,
                         didConnect peripheral: CBPeripheral) {
+        print("Connected to peripheral: \(peripheral.name ?? "unknown")")
         isConnected = true
         statusText  = "Connected to NanoPPG"
         sessionData.removeAll()
@@ -164,11 +219,9 @@ class BLEManager: NSObject, ObservableObject, CBCentralManagerDelegate, CBPeriph
                         error: Error?) {
         isConnected = false
         statusText  = "Disconnected — analyzing..."
-        closeCSV()
-        runSleepAnalysis()
-        sessionData.removeAll()
-        sessionFirstTimestamp = nil   // reset for next session
-        statusText = "Scanning..."
+        finalizeEndedSession()
+        self.peripheral = nil
+        self.characteristic = nil
         centralManager.scanForPeripherals(withServices: [SERVICE_UUID], options: nil)
     }
 
@@ -197,7 +250,14 @@ class BLEManager: NSObject, ObservableObject, CBCentralManagerDelegate, CBPeriph
     func peripheral(_ peripheral: CBPeripheral,
                     didUpdateValueFor characteristic: CBCharacteristic,
                     error: Error?) {
-        guard let data = characteristic.value, data.count == 20 else { return }
+        guard let data = characteristic.value else {
+                    print("⚠️ Characteristic update with nil data")
+                    return
+                }
+                guard data.count == 32 else {
+                    print("⚠️ Unexpected payload size: \(data.count) bytes (expected 32)")
+                    return
+                }
 
         let floats = data.withUnsafeBytes { ptr -> [Float] in
             Array(ptr.bindMemory(to: Float.self))
@@ -209,14 +269,14 @@ class BLEManager: NSObject, ObservableObject, CBCentralManagerDelegate, CBPeriph
             self.writeCSVRow(
                 timestamp: now,
                 x: floats[0], y: floats[1], z: floats[2],
-                hr: floats[3], spo2: floats[4]
+                hr: floats[6], spo2: floats[7]
             )
         }
 
         DispatchQueue.main.async {
             self.sensorData = SensorData(
                 accX: floats[0], accY: floats[1], accZ: floats[2],
-                hr:   floats[3], spo2: floats[4]
+                hr:   floats[6], spo2: floats[7]
             )
             self.sessionData.append(self.sensorData)
         }

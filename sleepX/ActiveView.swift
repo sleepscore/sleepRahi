@@ -10,6 +10,7 @@ final class ActiveViewModel: ObservableObject {
 struct ActiveView: View {
     @StateObject private var viewModel = ActiveViewModel()
     @StateObject private var ble = BLEManager()
+    @Environment(\.dismiss) private var dismiss
 
     @Environment(\.modelContext) private var context
 
@@ -38,6 +39,21 @@ struct ActiveView: View {
         }
         .navigationTitle("Active View")
         .navigationBarTitleDisplayMode(.inline)
+        .navigationBarBackButtonHidden(true)
+        .toolbar {
+            ToolbarItem(placement: .navigationBarLeading) {
+                Button {
+                    ble.endActiveSession {
+                        dismiss()
+                    }
+                } label: {
+                    HStack(spacing: 4) {
+                        Image(systemName: "chevron.left")
+                        Text("Back")
+                    }
+                }
+            }
+        }
         .padding(.bottom, 24)
         .onAppear {
             ble.modelContext = context

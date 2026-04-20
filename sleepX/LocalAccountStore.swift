@@ -1,10 +1,4 @@
-//
-//  LocalAccountStore.swift
-//  sleepX
-//
-//  Persists username + PIN hash locally (UserDefaults). For lab/demo use only.
-//
-
+// Local account storage of username keys
 import Foundation
 import CryptoKit
 
@@ -25,6 +19,7 @@ final class LocalAccountStore {
         case usernameTaken
     }
 
+    // Registration
     func register(username: String, pin: String) throws {
         let key = normalize(username)
         var map = accountHashes
@@ -33,12 +28,14 @@ final class LocalAccountStore {
         accountHashes = map
     }
 
+    // Sign in
     func verify(username: String, pin: String) -> Bool {
         let key = normalize(username)
         guard let stored = accountHashes[key] else { return false }
         return stored == hashPIN(pin)
     }
 
+    // Normalization and hashing
     private func normalize(_ username: String) -> String {
         username.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
     }

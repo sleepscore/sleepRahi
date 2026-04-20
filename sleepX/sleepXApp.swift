@@ -1,8 +1,4 @@
-//
-//  sleepXApp.swift
-//  sleepX
-//
-
+// SwiftData container for persisted sleep results.
 import SwiftUI
 import SwiftData
 
@@ -10,9 +6,10 @@ import SwiftData
 struct sleepXApp: App {
     var body: some Scene {
         WindowGroup {
+            // Root
             WelcomeView()
         }
-        // Single source of truth — SwiftData persists SleepResult to device storage
+        // SwiftData persistence for SleepResult
         .modelContainer(for: SleepResult.self)
     }
 }

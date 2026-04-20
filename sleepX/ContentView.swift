@@ -1,17 +1,11 @@
-//
-//  ContentView.swift
-//  sleepX
-//
-
+//Navigation into live tracking and the sleep summary.
 import SwiftUI
 
 struct ContentView: View {
-    @StateObject private var viewModel = SleepScoreViewModel()
-
     var body: some View {
         ScrollView {
             VStack(spacing: 18) {
-
+                // Start tracking
                 NavigationLink(destination: ActiveView()) {
                     Text("Start tracking")
                         .fontWeight(.semibold)
@@ -24,6 +18,7 @@ struct ContentView: View {
                 }
                 .padding(.top, 8)
 
+                // Summary
                 NavigationLink(destination: SleepSummaryView()) {
                     Text("Summary View")
                         .fontWeight(.semibold)
@@ -37,6 +32,7 @@ struct ContentView: View {
             }
             .padding()
         }
+        // Navigation bar
         .navigationTitle("Home Page")
         .navigationBarTitleDisplayMode(.inline)
     }

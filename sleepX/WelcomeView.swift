@@ -1,16 +1,12 @@
-//
-//  WelcomeView.swift
-//  sleepX
-//
-
+// Welcome landing screen and entry into sign-in.
 import SwiftUI
 import Combine
 
 final class WelcomeViewModel: ObservableObject {
     let objectWillChange = ObservableObjectPublisher()
-    @Published var projectName: String = "Sleep Score tracker"
+    @Published var projectName: String = "Night Watch"
 }
-
+//UI
 struct WelcomeView: View {
     @StateObject private var viewModel = WelcomeViewModel()
 
@@ -19,6 +15,7 @@ struct WelcomeView: View {
             VStack(spacing: 20) {
                 Spacer()
 
+                // Title
                 Text(viewModel.projectName)
                     .font(.largeTitle)
                     .fontWeight(.bold)
@@ -26,6 +23,7 @@ struct WelcomeView: View {
 
                 Spacer()
 
+                // Welcome action
                 NavigationLink(destination: LoginView()) {
                     Text("Welcome")
                         .fontWeight(.semibold)
@@ -39,6 +37,7 @@ struct WelcomeView: View {
                 .padding(.bottom, 32)
             }
             .padding(.top, 20)
+            // Navigation bar
             .navigationTitle("Welcome")
             .navigationBarTitleDisplayMode(.inline)
         }

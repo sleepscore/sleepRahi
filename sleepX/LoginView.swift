@@ -1,8 +1,4 @@
-//
-//  LoginView.swift
-//  sleepX
-//
-
+// Sign-in with username and PIN; navigates to home or create-account.
 import SwiftUI
 import Combine
 
@@ -17,10 +13,12 @@ final class LoginViewModel: ObservableObject {
         self.accountStore = accountStore
     }
 
+    //Correct Form Validation
     var canSubmit: Bool {
         !username.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && pin.count >= 4
     }
 
+    // Sign in
     func submit() -> Bool {
         errorMessage = nil
 
@@ -40,18 +38,20 @@ final class LoginViewModel: ObservableObject {
         return true
     }
 }
-
+//UI
 struct LoginView: View {
     @StateObject private var viewModel = LoginViewModel()
     @State private var navigateToHome = false
 
     var body: some View {
         VStack(spacing: 16) {
+            // Title
             Text("Login")
                 .font(.largeTitle)
                 .fontWeight(.bold)
                 .padding(.top, 24)
 
+            // Username
             TextField("Username", text: $viewModel.username)
                 .textContentType(.username)
                 .textInputAutocapitalization(.never)
@@ -60,6 +60,7 @@ struct LoginView: View {
                 .background(Color(.secondarySystemBackground))
                 .cornerRadius(12)
 
+            // PIN
             SecureField("PIN", text: $viewModel.pin)
                 .textContentType(.oneTimeCode)
                 .keyboardType(.numberPad)
@@ -71,6 +72,7 @@ struct LoginView: View {
                     if digitsOnly != newValue { viewModel.pin = digitsOnly }
                 }
 
+            // Error
             if let message = viewModel.errorMessage {
                 Text(message)
                     .foregroundStyle(.red)
@@ -79,6 +81,7 @@ struct LoginView: View {
                     .padding(.horizontal)
             }
 
+            // Submit
             Button {
                 if viewModel.submit() {
                     navigateToHome = true
@@ -95,6 +98,7 @@ struct LoginView: View {
             .disabled(!viewModel.canSubmit)
             .padding(.top, 8)
 
+            // Create account
             NavigationLink(destination: CreateAccountView()) {
                 Text("Create an account")
                     .fontWeight(.medium)
@@ -104,6 +108,7 @@ struct LoginView: View {
             Spacer()
         }
         .padding(.horizontal)
+        // Navigation bar
         .navigationTitle("Login")
         .navigationBarTitleDisplayMode(.inline)
         .navigationDestination(isPresented: $navigateToHome) {

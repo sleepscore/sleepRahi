@@ -1,19 +1,14 @@
-//
-//  BLEManager.swift
-//  sleepX
-//
-//  Created by Ellen Baik on 4/7/26.
-//
-
+// Bluetooth manager: scans, connects, streams sensor data to CSV, runs sleep analysis, and writes SwiftData when a session ends.
 import Foundation
 import CoreBluetooth
 import Combine
 import SwiftData
 
-// Must match your Arduino UUIDs exactly
+// Match Arduino UUIDs exactly.
 let SERVICE_UUID = CBUUID(string: "3a94b4a6-c6fd-4272-a476-465327f50e3c")
 let CHAR_UUID    = CBUUID(string: "0b51e4d8-4271-4f2d-b260-da01bbf30b76")
 
+//sensor default
 struct SensorData {
     var accX:  Float = 0
     var accY:  Float = 0
@@ -24,12 +19,12 @@ struct SensorData {
 
 class BLEManager: NSObject, ObservableObject, CBCentralManagerDelegate, CBPeripheralDelegate {
 
-    // MARK: - Published UI State
+    // Published UI State
     @Published var isConnected = false
     @Published var statusText  = "Scanning..."
     @Published var sensorData  = SensorData()
 
-    // MARK: - BLE internals
+    // BLE Internals Variables
     private var centralManager: CBCentralManager!
     private var peripheral:     CBPeripheral?
     private var characteristic: CBCharacteristic?
@@ -37,20 +32,20 @@ class BLEManager: NSObject, ObservableObject, CBCentralManagerDelegate, CBPeriph
     private var endSessionCompletion: (() -> Void)?
     
 
-    // MARK: - Sleep Analysis
+    // Sleep Analysis
     var sessionData: [SensorData] = []
     private let analyzer = SleepAnalyzer()
 
-    // SwiftData context — injected from SwiftUI via ActiveView
+    // SwiftData context injected from SwiftUI via ActiveView.
     var modelContext: ModelContext?
 
-    // MARK: - CSV Writing
+    // CSV Writing
     private var csvFileHandle:        FileHandle?
     private var csvFileURL:           URL?
 
-    /// Timestamp of the very first sample — drives both the CSV name and
-    /// the SwiftData record date so they always refer to the same night.
-    var sessionFirstTimestamp: Date?  // internal: ActiveView sets this for testing
+    // Timestamp of the first sample. This drives both the CSV name and
+    // SwiftData record date so they always refer to the same night.
+    var sessionFirstTimestamp: Date?
 
     private let rowFmt: DateFormatter = {
         let f = DateFormatter()
@@ -64,9 +59,10 @@ class BLEManager: NSObject, ObservableObject, CBCentralManagerDelegate, CBPeriph
         return f
     }()
 
-    // MARK: - Night date logic
+    
+    // Night Date Logic
 
-    /// Before 1 PM → belongs to the previous calendar day's session.
+    // Before 1 PM, data belongs to the previous calendar day session.
     private func nightDate(for timestamp: Date) -> Date {
         let cal  = Calendar.current
         let hour = cal.component(.hour, from: timestamp)
@@ -79,7 +75,7 @@ class BLEManager: NSObject, ObservableObject, CBCentralManagerDelegate, CBPeriph
         fileFmt.string(from: nightDate(for: timestamp))
     }
 
-    // MARK: - CSV helpers
+    // CSV Helpers
     private func csvFolderURL() -> URL {
           let docs = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
           let folder = docs.appendingPathComponent("sleepmetricanalysis", isDirectory: true)
@@ -87,9 +83,7 @@ class BLEManager: NSObject, ObservableObject, CBCentralManagerDelegate, CBPeriph
           if !FileManager.default.fileExists(atPath: folder.path) {
               do {
                   try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
-                  print("📁 Created CSV folder → \(folder.path)")
               } catch {
-                  print("❌ Failed to create CSV folder: \(error.localizedDescription)")
               }
           }
 
@@ -103,17 +97,12 @@ class BLEManager: NSObject, ObservableObject, CBCentralManagerDelegate, CBPeriph
         let folder  = csvFolderURL()
         let url     = folder.appendingPathComponent("sleep_\(dateStr).csv")
         csvFileURL  = url
-        print("CSV folder path -> \(folder.path)")
-        print("CSV folder path -> \(url.path)")
 
         if !FileManager.default.fileExists(atPath: url.path) {
             FileManager.default.createFile(
                 atPath: url.path,
                 contents: "time,x,y,z,hr,spo2\n".data(using: .utf8)
             )
-            print("📄 New CSV → sleep_\(dateStr).csv")
-        } else {
-            print("📄 Resuming CSV → sleep_\(dateStr).csv")
         }
 
         csvFileHandle = try? FileHandle(forWritingTo: url)
@@ -135,14 +124,12 @@ class BLEManager: NSObject, ObservableObject, CBCentralManagerDelegate, CBPeriph
     func closeCSV() {
         csvFileHandle?.closeFile()
         csvFileHandle = nil
-        if let url = csvFileURL {
-            print("📄 CSV closed → \(url.lastPathComponent)")
-        }
         csvFileURL = nil
-        // Keep sessionFirstTimestamp alive so runSleepAnalysis uses same night date
+        // Keep sessionFirstTimestamp so runSleepAnalysis uses the same night date.
     }
-    /// Explicit session shutdown for UI events (e.g. user taps Back).
-    /// Ensures we stop streaming before the view disappears.
+    
+    // Explicit session shutdown for UI events, for example when the user taps Back.
+    // This ensures streaming stops before the view disappears.
     private func finalizeEndedSession() {
         closeCSV()
         runSleepAnalysis()
@@ -172,24 +159,21 @@ class BLEManager: NSObject, ObservableObject, CBCentralManagerDelegate, CBPeriph
         finalizeEndedSession()
     }
     
-    // MARK: - Init
+    // Initialization
 
     override init() {
         super.init()
         centralManager = CBCentralManager(delegate: self, queue: nil)
     }
 
-    // MARK: - CBCentralManagerDelegate
+    // CB Central Manager
 
     func centralManagerDidUpdateState(_ central: CBCentralManager) {
-        print("Bluetooth state rawValue: \(central.state.rawValue)")
         if central.state == .poweredOn {
             centralManager.scanForPeripherals(withServices: [SERVICE_UUID], options: nil)
-            statusText = "Scanning for NanoPPG..."
-            print("Scanning for service \(SERVICE_UUID.uuidString)")
+            statusText = "Scanning for NightWatch Device..."
         } else {
             statusText = "Bluetooth unavailable"
-            print("Bluetooth Unavailable")
         }
     }
 
@@ -197,7 +181,6 @@ class BLEManager: NSObject, ObservableObject, CBCentralManagerDelegate, CBPeriph
                         didDiscover peripheral: CBPeripheral,
                         advertisementData: [String: Any],
                         rssi RSSI: NSNumber) {
-        print("✅ Discovered peripheral: \(peripheral.name ?? "unknown"), RSSI: \(RSSI)")
         self.peripheral = peripheral
         centralManager.stopScan()
         centralManager.connect(peripheral, options: nil)
@@ -206,7 +189,6 @@ class BLEManager: NSObject, ObservableObject, CBCentralManagerDelegate, CBPeriph
 
     func centralManager(_ central: CBCentralManager,
                         didConnect peripheral: CBPeripheral) {
-        print("Connected to peripheral: \(peripheral.name ?? "unknown")")
         isConnected = true
         statusText  = "Connected to NanoPPG"
         sessionData.removeAll()
@@ -225,7 +207,7 @@ class BLEManager: NSObject, ObservableObject, CBCentralManagerDelegate, CBPeriph
         centralManager.scanForPeripherals(withServices: [SERVICE_UUID], options: nil)
     }
 
-    // MARK: - CBPeripheralDelegate
+    // CB Peripheral Manager
 
     func peripheral(_ peripheral: CBPeripheral,
                     didDiscoverServices error: Error?) {
@@ -251,11 +233,9 @@ class BLEManager: NSObject, ObservableObject, CBCentralManagerDelegate, CBPeriph
                     didUpdateValueFor characteristic: CBCharacteristic,
                     error: Error?) {
         guard let data = characteristic.value else {
-                    print("⚠️ Characteristic update with nil data")
                     return
                 }
                 guard data.count == 32 else {
-                    print("⚠️ Unexpected payload size: \(data.count) bytes (expected 32)")
                     return
                 }
 
@@ -282,20 +262,17 @@ class BLEManager: NSObject, ObservableObject, CBCentralManagerDelegate, CBPeriph
         }
     }
 
-    // MARK: - Sleep Analysis
+    // Sleep Analysis Function
 
     func runSleepAnalysis() {
         guard let context = modelContext else {
-            print("❌ modelContext not set")
             return
         }
-        print("🧠 Running analysis on \(sessionData.count) samples")
         guard let result = analyzer.analyze(data: sessionData) else {
-            print("❌ Not enough data to analyze")
             return
         }
 
-        // Night date comes from the first timestamp — matches the CSV filename exactly
+        // Night date comes from the first timestamp and matches the CSV filename.
         let night = nightDate(for: sessionFirstTimestamp ?? Date())
 
         let entry = SleepResult(
@@ -312,6 +289,5 @@ class BLEManager: NSObject, ObservableObject, CBCentralManagerDelegate, CBPeriph
             sleepScore:  result.sleepScore
         )
         context.insert(entry)
-        print("💾 Saved → \(fileFmt.string(from: night))  score: \(result.sleepScore)")
     }
 }

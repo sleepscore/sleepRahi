@@ -1,8 +1,4 @@
-//
-//  CreateAccountView.swift
-//  sleepX
-//
-
+// Register a new local username and PIN, with a success confirmation state.
 import SwiftUI
 import Combine
 
@@ -19,11 +15,13 @@ final class CreateAccountViewModel: ObservableObject {
         self.store = store
     }
 
+    // Form validation
     var canSubmit: Bool {
         let trimmed = username.trimmingCharacters(in: .whitespacesAndNewlines)
         return !trimmed.isEmpty && pin.count >= 4 && pin == confirmPin
     }
 
+    // Persist new account
     func createAccount() -> Bool {
         errorMessage = nil
         let trimmed = username.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -52,7 +50,7 @@ struct CreateAccountView: View {
     var body: some View {
         VStack(spacing: 16) {
             if accountCreated {
-                // ── Success state ──────────────────────────────
+                // Success state
                 Spacer()
 
                 Image(systemName: "checkmark.circle.fill")
@@ -86,7 +84,7 @@ struct CreateAccountView: View {
                 Spacer()
 
             } else {
-                // ── Form state ─────────────────────────────────
+                // Form
                 Text("Create account")
                     .font(.largeTitle)
                     .fontWeight(.bold)
@@ -154,6 +152,7 @@ struct CreateAccountView: View {
             }
         }
         .padding(.horizontal)
+        // Navigation bar
         .navigationTitle("Sign up")
         .navigationBarTitleDisplayMode(.inline)
         .animation(.easeInOut, value: accountCreated)

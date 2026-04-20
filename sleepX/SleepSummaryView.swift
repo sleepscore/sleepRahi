@@ -1,8 +1,4 @@
-//
-//  SleepSummaryView.swift
-//  sleepX
-//
-
+// Summary screen of calendar, selected night, score UI or empty state
 import SwiftUI
 import SwiftData
 
@@ -18,7 +14,7 @@ struct SleepSummaryView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
 
-                // ── Header ──────────────────────────────────
+                // Header
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Summary")
                         .font(.largeTitle)
@@ -27,7 +23,7 @@ struct SleepSummaryView: View {
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                 }
-                // ── Calendar ────────────────────────────────
+                // Calendar
                 VStack {
                     DatePicker(
                         "Select day",
@@ -44,7 +40,7 @@ struct SleepSummaryView: View {
                 .background(Color(.secondarySystemBackground))
                 .cornerRadius(16)
 
-                // ── Selected day label ───────────────────────
+                // Selected day label
                 HStack(spacing: 6) {
                     Image(systemName: "calendar")
                         .foregroundStyle(.indigo)
@@ -54,7 +50,7 @@ struct SleepSummaryView: View {
                     Spacer()
                 }
 
-                // ── Metrics or empty state ───────────────────
+                // Metrics or empty state
                 if let result = resultForSelectedDay {
                     SleepScoreIndexView(
                         viewModel: viewModel.scoreViewModel(from: result)
@@ -65,13 +61,12 @@ struct SleepSummaryView: View {
             }
             .padding()
         }
+        // Navigation bar
         .navigationTitle("Summary")
         .navigationBarTitleDisplayMode(.inline)
     }
 
-    // ── Helpers ──────────────────────────────────────────────
-
-    /// Find the SwiftData record whose .date matches the selected calendar day.
+    // SwiftData record for the selected calendar day
     private var resultForSelectedDay: SleepResult? {
         allResults.first { viewModel.isSameDay($0.date, viewModel.selectedDate) }
     }
@@ -89,8 +84,7 @@ struct SleepSummaryView: View {
     }
 }
 
-// MARK: - Empty state
-
+// Empty state when no night is recorded
 private struct EmptyDayView: View {
     var body: some View {
         VStack(spacing: 12) {

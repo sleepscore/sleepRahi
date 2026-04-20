@@ -1,6 +1,6 @@
+// Analyzes streamed sensor history to estimate sleep/wake and compute a composite sleep score.
 import Foundation
 import SwiftData
-import Foundation
 
 class SleepAnalyzer {
 
@@ -20,11 +20,10 @@ class SleepAnalyzer {
         var sleepScore: Int
     }
 
-    // MARK: - ENTRY POINT
     func analyze(data: [SensorData]) -> Result? {
         guard data.count > 15 else { return nil }
 
-        // Acceleration magnitude
+        // Acceleration magnitude Calculation
         let accel = data.map {
             sqrt(Double($0.accX*$0.accX +
                         $0.accY*$0.accY +
@@ -37,7 +36,7 @@ class SleepAnalyzer {
         return computeEndpoints(data: data, sleep: sleep)
     }
 
-    // MARK: - ACTIVITY INDEX (rolling variance, O(n))
+    // Activity index (rolling variance)
     func activityIndex(_ signal: [Double]) -> [Double] {
         let window = Int(fs * 60 * 20) // 20 min
 
@@ -66,7 +65,7 @@ class SleepAnalyzer {
         return result
     }
 
-    // MARK: - SLEEP DETECTION
+    // Sleep detection
     func detectSleep(_ ai: [Double]) -> [Int] {
         let threshold = percentile(ai, 75)
 
@@ -85,7 +84,7 @@ class SleepAnalyzer {
         return smooth.map { $0 > 0.5 ? 1 : 0 }
     }
 
-    // MARK: - ENDPOINTS
+    // Endpoints and derived metrics calculation
     func computeEndpoints(data: [SensorData], sleep: [Int]) -> Result? {
 
         let sleepIdx = sleep.enumerated().filter { $0.element == 1 }.map { $0.offset }
@@ -96,7 +95,7 @@ class SleepAnalyzer {
         let wakeMinutes = totalMinutes - sleepMinutes
         let efficiency = 100 * sleepMinutes / totalMinutes
 
-        // MARK: Wake bouts (≥90 sec)
+        // Wake bouts (at least 90 seconds)
         let minWakeSamples = Int(90 * fs)
 
         var bouts = 0
@@ -121,9 +120,7 @@ class SleepAnalyzer {
             bouts += 1
         }
 
-        print("🌙 Wake bouts: \(bouts)")
-
-        // MARK: HR
+        // Heart rate
         let hrValues = data.map { Double($0.hr) }.filter { $0 > 0 }
 
         let avgHR = hrValues.isEmpty ? nil : hrValues.reduce(0,+)/Double(hrValues.count)
@@ -132,7 +129,7 @@ class SleepAnalyzer {
 
         let rmssd = computeRMSSD(hrValues: hrValues)
 
-        // MARK: SpO2 drops
+        // SpO2 drops
         let spo2Drops = data.filter { $0.spo2 > 0 && $0.spo2 < 90 }.count
 
         let score = computeSleepScore(
@@ -159,7 +156,7 @@ class SleepAnalyzer {
         )
     }
 
-    // MARK: - HRV (RMSSD)
+    // HRV (RMSSD)
     func computeRMSSD(hrValues: [Double]) -> Double? {
         guard hrValues.count > 2 else { return nil }
 
@@ -174,7 +171,7 @@ class SleepAnalyzer {
         return sqrt(meanSq)
     }
 
-    // MARK: - SCORE
+    // Composite sleep score
     func computeSleepScore(
         sleepMin: Double,
         efficiency: Double,
@@ -219,7 +216,7 @@ class SleepAnalyzer {
         return max(1, min(100, Int(round(total))))
     }
 
-    // MARK: - HELPERS
+    // Helpers
     func percentile(_ arr: [Double], _ p: Double) -> Double {
         let sorted = arr.sorted()
         let index = Int(Double(sorted.count) * p / 100.0)

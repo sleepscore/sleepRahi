@@ -1,3 +1,4 @@
+// SwiftData model: one stored night of sleep metrics and score after analysis.
 import Foundation
 import SwiftData
 

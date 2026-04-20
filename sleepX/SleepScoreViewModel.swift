@@ -1,11 +1,9 @@
-//
-//  SleepScoreViewModel.swift
-//  sleepX
-//
+// View model for the sleep score ring, metric text, colors, and score-band explanations.
 
 import SwiftUI
 import Combine
 
+// Values shown on the screen
 struct SleepScoreData {
     var score: Int
     var timeAsleepSeconds: TimeInterval
@@ -28,27 +26,13 @@ final class SleepScoreViewModel: ObservableObject {
         self.data = data
     }
 
-    init() {
-        self.data = SleepScoreData(
-            score: 82,
-            timeAsleepSeconds: 6.5 * 3600,
-            timeInBedSeconds:  8.0 * 3600,
-            avgHR: 57,
-            sleepEfficiencyPct: 86,
-            spo2DropCount: 0,
-            wakeBouts: 2,
-            explanation0to60:   "Your sleep needs attention. Focus on consistent bedtimes and reducing wake interruptions.",
-            explanation60to80:  "Decent sleep, but there's room to improve. Try limiting screen time before bed.",
-            explanation80to90:  "Good sleep quality. Keep up your current routine and aim for more deep sleep.",
-            explanation90to100: "Excellent sleep! You're recovering well and hitting all the key markers."
-        )
-    }
-
+    // Asleep time divided by in-bed time
     var sleepEfficiency: Double {
         guard data.timeInBedSeconds > 0 else { return 0 }
         return max(0, min(1, data.timeAsleepSeconds / data.timeInBedSeconds))
     }
 
+    // Human-readable duration formating
     func formatDuration(_ seconds: TimeInterval) -> String {
         let totalMinutes = Int(seconds / 60)
         let hours   = totalMinutes / 60
@@ -56,6 +40,7 @@ final class SleepScoreViewModel: ObservableObject {
         return hours > 0 ? "\(hours)h \(minutes)m" : "\(minutes)m"
     }
 
+    // Ring color by score band
     func scoreColor() -> Color {
         switch data.score {
         case 90...100: return Color(red: 0.2,  green: 0.78, blue: 0.55)
@@ -65,6 +50,7 @@ final class SleepScoreViewModel: ObservableObject {
         }
     }
 
+    // Explanation label for current score band
     func activeExplanationRangeTitle() -> String {
         switch data.score {
         case 90...100: return "90–100"
@@ -74,6 +60,7 @@ final class SleepScoreViewModel: ObservableObject {
         }
     }
 
+    // Explanation copy for current score band
     func activeExplanation() -> String {
         switch data.score {
         case 90...100: return data.explanation90to100

@@ -1,3 +1,5 @@
+// Live tracking screen: shows BLE status and real-time sensor readings; ends the session when the user goes back.
+
 import CoreBluetooth
 import SwiftUI
 import Combine
@@ -11,21 +13,18 @@ struct ActiveView: View {
     @StateObject private var viewModel = ActiveViewModel()
     @StateObject private var ble = BLEManager()
     @Environment(\.dismiss) private var dismiss
-
+    
     @Environment(\.modelContext) private var context
-
+    
     var body: some View {
         VStack(spacing: 16) {
-            Button("🧪 Run Test Sleep") {
-                runTestSleep()
-            }
-            .padding()
-
+            // Title
             Text("Active")
                 .font(.largeTitle)
                 .fontWeight(.bold)
                 .padding(.top, 24)
-
+            
+            // Real-time metrics
             VStack(spacing: 12) {
                 Text("Status: \(ble.statusText)")
                 Text("Heart Rate: \(Int(ble.sensorData.hr)) BPM")
@@ -35,11 +34,15 @@ struct ActiveView: View {
                 Text("Acc Z: \(ble.sensorData.accZ, specifier: "%.2f")")
             }
 
+            // Spacer to keep content near the top
             Spacer()
         }
+        // Navigation bar setup
         .navigationTitle("Active View")
         .navigationBarTitleDisplayMode(.inline)
         .navigationBarBackButtonHidden(true)
+        
+        // Custom back button that ends the active session
         .toolbar {
             ToolbarItem(placement: .navigationBarLeading) {
                 Button {
@@ -54,64 +57,17 @@ struct ActiveView: View {
                 }
             }
         }
+        // Layout and context injection
         .padding(.bottom, 24)
         .onAppear {
             ble.modelContext = context
         }
     }
-
-    func runTestSleep() {
-        // Always set context right before running — don't rely on onAppear timing
-        ble.modelContext = context
-
-        let totalSamples = 8 * 60 * 60  // 8 hours at 1 Hz
-
-        var fakeData: [SensorData] = []
-
-        for i in 0..<totalSamples {
-            let minute        = i / 60
-            let cyclePosition = minute % 90
-
-            var acc: Float = 0.05
-            var hr:  Float = 60
-
-            switch cyclePosition {
-            case 0..<10:   acc = 0.15; hr = 70
-            case 10..<40:  acc = 0.02; hr = 52
-            case 40..<70:  acc = 0.06; hr = 60
-            case 70..<85:  acc = 0.04; hr = Float.random(in: 62...75)
-            default:       acc = 0.30; hr = 75
-            }
-
-            let noise = Float.random(in: -0.01...0.01)
-            fakeData.append(SensorData(
-                accX: acc + noise,
-                accY: acc + noise,
-                accZ: acc + noise,
-                hr:   hr,
-                spo2: 97
-            ))
-        }
-
-        // Simulate a recording that started last night at 10:30 PM
-        // so the night date = yesterday, matching a real overnight session
-        let yesterday  = Calendar.current.date(byAdding: .day, value: -1, to: Date())!
-        let sleepStart = Calendar.current.date(
-            bySettingHour: 22, minute: 30, second: 0, of: yesterday
-        )!
-
-        ble.sessionFirstTimestamp = sleepStart
-        ble.sessionData           = fakeData
-
-        print("🧪 Test sleep: \(fakeData.count) samples, night: \(sleepStart)")
-
-        ble.runSleepAnalysis()
-    }
 }
 
 #Preview {
     NavigationStack {
-        LoginView()
+        ActiveView()
     }
     .modelContainer(for: SleepResult.self, inMemory: true)
 }

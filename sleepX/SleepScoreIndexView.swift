@@ -1,19 +1,16 @@
-//
-//  SleepScoreIndexView.swift
-//  sleepX
-//
-
+// Sleep score layout: ring, primary stats, metric grid, and explanation card.
 import SwiftUI
 
 struct SleepScoreIndexView: View {
     @ObservedObject var viewModel: SleepScoreViewModel
     var showsMetrics: Bool    = true
     var showsExplanation: Bool = true
-
+    
+    //UI
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {
 
-            // ── Score circle + primary stats ──────────────────
+            // Score circle and primary stats
             HStack(alignment: .center, spacing: 20) {
                 ScoreCircleView(
                     score: viewModel.data.score,
@@ -39,7 +36,7 @@ struct SleepScoreIndexView: View {
                 Spacer(minLength: 0)
             }
 
-            // ── Metric cards grid ─────────────────────────────
+            // Metric cards grid
             if showsMetrics {
                 LazyVGrid(columns: [
                     GridItem(.flexible(), spacing: 12),
@@ -78,7 +75,7 @@ struct SleepScoreIndexView: View {
                 }
             }
 
-            // ── Explanation section ───────────────────────────
+            // Explanation
             if showsExplanation {
                 VStack(alignment: .leading, spacing: 10) {
                     Text("Sleep Score Explanation")
@@ -108,7 +105,7 @@ struct SleepScoreIndexView: View {
     }
 }
 
-// MARK: - Score Circle
+// Score circle
 
 private struct ScoreCircleView: View {
     let score: Int
@@ -148,7 +145,7 @@ private struct ScoreCircleView: View {
     }
 }
 
-// MARK: - Primary stat (beside circle)
+// Primary stat beside circle
 
 private struct PrimaryStatLine: View {
     let icon: String
@@ -173,7 +170,7 @@ private struct PrimaryStatLine: View {
     }
 }
 
-// MARK: - Metric card
+// Metric card
 
 private struct MetricCard: View {
     let icon: String
